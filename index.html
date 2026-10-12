@@ -6,6 +6,10 @@
 <meta name="theme-color" content="#2f6f4f">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon.svg">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Comidas">
 <title>Comidas</title>
 <style>
 *{box-sizing:border-box}
@@ -154,5 +158,6 @@ $('#tabs').onclick=e=>{const f=e.target.dataset.f;if(!f)return;filtro=f;
 lista();
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js');
 </script>
+<script src="https://kuerb0.github.io/portal/instalar.js" data-aviso="Comidas"></script>
 </body>
 </html>
