@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#2f6f4f">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg">
+<title>Comidas</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font:16px system-ui,sans-serif;background:#f4f6f4;color:#1c2a22;padding-bottom:90px}
+header{position:sticky;top:0;background:#2f6f4f;color:#fff;padding:12px 16px;z-index:2}
+h1{margin:0 0 8px;font-size:20px}
+header input{width:100%;padding:10px;border:0;border-radius:8px;font-size:16px}
+nav{display:flex;gap:8px;margin-top:8px}
+nav button{flex:1;padding:8px;border:0;border-radius:8px;background:#ffffff33;color:#fff;font-size:15px}
+nav button.on{background:#fff;color:#2f6f4f;font-weight:600}
+#lista{padding:12px 16px;display:grid;gap:10px}
+article{background:#fff;border-radius:12px;padding:12px 14px;box-shadow:0 1px 3px #0002}
+article h3{margin:0 0 4px;font-size:17px}
+article small{font-weight:400;color:#5a6b61;text-transform:capitalize}
+article p{margin:4px 0 8px;color:#3c4d43;font-size:14px}
+b{display:inline-block;background:#fde3d2;color:#8a3b00;border-radius:12px;padding:2px 9px;margin:2px 4px 2px 0;font-size:13px;font-weight:600}
+i{color:#7a8a80;font-size:13px}
+.vacio{text-align:center;color:#7a8a80;margin-top:40px}
+#nuevo{position:fixed;right:18px;bottom:18px;width:60px;height:60px;border:0;border-radius:50%;background:#2f6f4f;color:#fff;font-size:34px;box-shadow:0 3px 8px #0004}
+dialog{width:100%;max-width:520px;height:100%;max-height:100%;margin:0 auto;border:0;padding:16px;background:#f4f6f4}
+dialog::backdrop{background:#0006}
+label.f{display:block;margin:12px 0 4px;font-weight:600;font-size:14px}
+dialog input,dialog select,dialog textarea{width:100%;padding:10px;border:1px solid #c5d0c9;border-radius:8px;font-size:16px;background:#fff}
+.row{display:grid;grid-template-columns:1fr 70px 80px 36px;gap:6px;margin-bottom:6px}
+.row button{border:0;background:none;font-size:22px;color:#a33}
+#chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-flex;align-items:center;gap:4px;padding:6px 10px;border:1px solid #c5d0c9;border-radius:16px;background:#fff;font-size:14px}
+.chip input{width:auto;margin:0}
+.chip:has(input:checked){background:#fde3d2;border-color:#e0a070;color:#8a3b00;font-weight:600}
+.acc{display:flex;gap:8px;margin-top:18px}
+.acc button{flex:1;padding:12px;border:0;border-radius:8px;font-size:16px;background:#dfe6e1}
+.acc .ok{background:#2f6f4f;color:#fff;flex:2}
+.acc .del{background:#f3d0d0;color:#822}
+</style>
+</head>
+<body>
+<header>
+  <h1>Comidas</h1>
+  <input id="q" type="search" placeholder="Buscar plato o ingrediente">
+  <nav id="tabs"><button data-f="todos" class="on">Todos</button><button data-f="comida">Comida</button><button data-f="cena">Cena</button></nav>
+</header>
+<main id="lista"></main>
+<button id="nuevo" aria-label="Nuevo plato">+</button>
+
+<dialog id="dlg">
+  <label class="f">Plato</label>
+  <input id="nombre" placeholder="Ej. Lentejas con chorizo">
+  <label class="f">Para</label>
+  <select id="momento"><option value="comida">Comida</option><option value="cena">Cena</option><option value="ambos">Comida o cena</option></select>
+  <label class="f">Ingredientes y cantidades</label>
+  <div id="ings"></div>
+  <button type="button" id="mas" style="padding:8px 12px">+ ingrediente</button>
+  <label class="f">Alérgenos <small style="font-weight:400">(se marcan solos según los ingredientes; corrígelos si hace falta)</small></label>
+  <div id="chips"></div>
+  <label class="f">Notas</label>
+  <textarea id="notas" rows="3"></textarea>
+  <div class="acc">
+    <button type="button" id="del" class="del">Borrar</button>
+    <button type="button" id="cerrar">Cancelar</button>
+    <button type="button" id="guardar" class="ok">Guardar</button>
+  </div>
+</dialog>
+
+<script>
+const A={gluten:'Gluten',crustaceos:'Crustáceos',huevo:'Huevo',pescado:'Pescado',cacahuetes:'Cacahuetes',soja:'Soja',lacteos:'Lácteos',frutos_secos:'Frutos secos',apio:'Apio',mostaza:'Mostaza',sesamo:'Sésamo',sulfitos:'Sulfitos',altramuces:'Altramuces',moluscos:'Moluscos'};
+// ponytail: palabras clave a ojo, solo sugieren; ella confirma con las casillas
+const K={
+ gluten:/\b(trigo|harina|pan\b|pasta|macarron|espagueti|fideo|cebada|centeno|avena|cuscus|galleta|empanad|rebozad)/,
+ crustaceos:/\b(gamba|langostino|cangrejo|langosta|cigala|camaron)/,
+ huevo:/\b(huevo|mayonesa|tortilla|clara|yema)/,
+ pescado:/\b(pescado|atun|salmon|merluza|bacalao|anchoa|sardina|lubina|dorada)/,
+ cacahuetes:/\b(cacahuete|mani\b)/,
+ soja:/\b(soja|tofu|edamame)/,
+ lacteos:/\b(leche|queso|nata\b|mantequilla|yogur|bechamel|crema)/,
+ frutos_secos:/\b(almendra|nuez|nueces|avellana|anacardo|pistacho|pinones)/,
+ apio:/\bapio/, mostaza:/\bmostaza/, sesamo:/\b(sesamo|tahini)/,
+ sulfitos:/\b(vino|vinagre)/, altramuces:/\baltramuz/,
+ moluscos:/\b(mejillon|calamar|pulpo|almeja|sepia|chipiron|berberecho)/
+};
+const U=['g','ml','ud','cucharada','taza'];
+const KEY='comidas.v1';
+const $=s=>document.querySelector(s);
+const norm=s=>String(s).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let db=[];try{db=JSON.parse(localStorage.getItem(KEY)||'[]')}catch{}
+let filtro='todos',cur=null;
+const save=()=>localStorage.setItem(KEY,JSON.stringify(db));
+navigator.storage?.persist?.();
+
+function lista(){
+  const q=norm($('#q').value);
+  const r=db.filter(d=>(filtro=='todos'||d.momento==filtro||d.momento=='ambos')&&norm(d.nombre+' '+d.ing.map(i=>i.n).join(' ')).includes(q));
+  $('#lista').innerHTML=r.map(d=>`<article data-id="${d.id}"><h3>${esc(d.nombre)} <small>${d.momento=='ambos'?'comida o cena':d.momento}</small></h3>
+    <p>${d.ing.map(i=>`${esc(i.c)} ${i.c?esc(i.u):''} ${esc(i.n)}`.trim()).join(' · ')}</p>
+    <div>${d.al.map(a=>`<b>${A[a]}</b>`).join('')||'<i>Sin alérgenos</i>'}</div>
+    ${d.notas?`<p><i>${esc(d.notas)}</i></p>`:''}</article>`).join('')
+    ||'<p class="vacio">'+(db.length?'Nada coincide.':'Aún no hay platos. Pulsa +')+'</p>';
+}
+function ings(){
+  $('#ings').innerHTML=cur.ing.map((x,i)=>`<div class="row">
+    <input data-i="${i}" data-k="n" placeholder="Ingrediente" value="${esc(x.n)}">
+    <input data-i="${i}" data-k="c" type="number" inputmode="decimal" min="0" placeholder="Cant." value="${esc(x.c)}">
+    <select data-i="${i}" data-k="u">${U.map(u=>`<option${u==x.u?' selected':''}>${u}</option>`).join('')}</select>
+    <button type="button" data-del="${i}" aria-label="Quitar">×</button></div>`).join('');
+}
+function chips(){
+  $('#chips').innerHTML=Object.entries(A).map(([k,v])=>`<label class="chip"><input type="checkbox" value="${k}"${cur.al.includes(k)?' checked':''}>${v}</label>`).join('');
+}
+function abrir(d){
+  cur=d?structuredClone(d):{id:crypto.randomUUID(),nombre:'',momento:'comida',ing:[{n:'',c:'',u:'g'}],al:[],notas:''};
+  $('#nombre').value=cur.nombre;$('#momento').value=cur.momento;$('#notas').value=cur.notas;
+  $('#del').style.display=d?'':'none';
+  ings();chips();$('#dlg').showModal();
+}
+$('#ings').addEventListener('input',e=>{
+  const {i,k}=e.target.dataset;if(i==null)return;
+  cur.ing[i][k]=e.target.value;
+  if(k=='n'){const n=norm(e.target.value);let ch=0;
+    for(const a in K)if(K[a].test(n)&&!cur.al.includes(a)){cur.al.push(a);ch=1}
+    if(ch)chips()}
+});
+$('#ings').addEventListener('click',e=>{
+  const i=e.target.dataset.del;if(i==null)return;
+  cur.ing.splice(i,1);if(!cur.ing.length)cur.ing.push({n:'',c:'',u:'g'});ings();
+});
+$('#chips').addEventListener('change',e=>{
+  const k=e.target.value;
+  cur.al=e.target.checked?[...cur.al,k]:cur.al.filter(a=>a!=k);
+});
+$('#mas').onclick=()=>{cur.ing.push({n:'',c:'',u:'g'});ings();$('#ings').lastElementChild.firstElementChild.focus()};
+$('#guardar').onclick=()=>{
+  cur.nombre=$('#nombre').value.trim();
+  if(!cur.nombre){$('#nombre').focus();return}
+  cur.momento=$('#momento').value;cur.notas=$('#notas').value.trim();
+  cur.ing=cur.ing.filter(x=>x.n.trim());
+  const j=db.findIndex(d=>d.id==cur.id);j<0?db.unshift(cur):db[j]=cur;
+  save();lista();$('#dlg').close();
+};
+$('#del').onclick=()=>{if(confirm('¿Borrar este plato?')){db=db.filter(d=>d.id!=cur.id);save();lista();$('#dlg').close()}};
+$('#cerrar').onclick=()=>$('#dlg').close();
+$('#nuevo').onclick=()=>abrir();
+$('#lista').onclick=e=>{const a=e.target.closest('article');if(a)abrir(db.find(d=>d.id==a.dataset.id))};
+$('#q').oninput=lista;
+$('#tabs').onclick=e=>{const f=e.target.dataset.f;if(!f)return;filtro=f;
+  document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.f==f));lista()};
+lista();
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js');
+</script>
+</body>
+</html>
